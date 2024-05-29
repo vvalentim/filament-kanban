@@ -2,16 +2,17 @@
 
 namespace Mokhosh\FilamentKanban\Concerns;
 
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
+use Illuminate\Database\Eloquent\Model;
 
 trait HasEditRecordModal
 {
     public bool $disableEditModal = false;
 
-    public ?array $editModalFormState = [];
+    public ?array $editModalState = [];
 
     public null | int | string $editModalRecordId = null;
+
+    protected string $editModalElementId = 'kanban--edit-record-modal';
 
     protected string $editModalTitle = 'Edit Record';
 
@@ -23,59 +24,18 @@ trait HasEditRecordModal
 
     protected string $editModalCancelButtonLabel = 'Cancel';
 
-    public function mount(): void
-    {
-        $this->form->fill();
-    }
-
-    public function recordClicked(int | string $recordId, array $data): void
+    public function handleRecordClick(int | string $recordId): void
     {
         $this->editModalRecordId = $recordId;
 
-        /**
-         * todo - the following line is a hacky fix
-         * figure why sometimes form schema is created before this
-         * method when a RichText is present in the form schema
-         **/
-        $this->form($this->form);
-        $this->form->fill($this->getEditModalRecordData($recordId, $data));
-
-        $this->dispatch('open-modal', id: 'kanban--edit-record-modal');
+        $this->dispatch('open-modal', id: $this->editModalElementId);
     }
 
-    public function editModalFormSubmitted(): void
+    public function handleFormSubmit(): void
     {
-        $this->editRecord($this->editModalRecordId, $this->form->getState(), $this->editModalFormState);
-
         $this->editModalRecordId = null;
-        $this->form->fill();
 
-        $this->dispatch('close-modal', id: 'kanban--edit-record-modal');
-    }
-
-    public function form(Form $form): Form
-    {
-        return $form
-            ->schema($this->getEditModalFormSchema($this->editModalRecordId))
-            ->statePath('editModalFormState')
-            ->model($this->editModalRecordId ? static::$model::find($this->editModalRecordId) : static::$model);
-    }
-
-    protected function getEditModalRecordData(int | string $recordId, array $data): array
-    {
-        return $this->getEloquentQuery()->find($recordId)->toArray();
-    }
-
-    protected function editRecord(int | string $recordId, array $data, array $state): void
-    {
-        $this->getEloquentQuery()->find($recordId)->update($data);
-    }
-
-    protected function getEditModalFormSchema(null | int | string $recordId): array
-    {
-        return [
-            TextInput::make(static::$recordTitleAttribute),
-        ];
+        $this->dispatch('close-modal', id: $this->editModalElementId);
     }
 
     protected function getEditModalTitle(): string
